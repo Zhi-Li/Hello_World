@@ -1,0 +1,33 @@
+name: Build ready-to-install Mac app
+
+on:
+  push:
+    branches: [screengate-build]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ScreenGate
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test and compile both architectures
+        run: bash scripts/build.sh
+      - name: Package the compiled app and installer
+        run: bash scripts/package-binary.sh
+      - name: Upload ready-to-install download
+        uses: actions/upload-artifact@v7
+        with:
+          name: ScreenGate-macOS-universal
+          path: ScreenGate/dist/ScreenGate-macOS-universal.zip
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
