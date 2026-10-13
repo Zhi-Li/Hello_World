@@ -91,7 +91,7 @@ Run `Uninstall.command` and enter `REMOVE` to remove the application, launch job
 
 Open `Package.swift` in Xcode or use the included shell scripts. The project uses SwiftUI/AppKit for the UI, a Swift root service, SystemConfiguration for network management, and a small C policy engine with a macOS API bridge. There are no Swift package dependencies.
 
-`VALIDATION.md` records the checks completed in the authoring environment. The portable C policy tests passed on Linux with address/undefined-behavior sanitizers. **The macOS app, native Swift compilation, live networking, and actual Intel/Apple silicon execution have not been tested in that environment.** `Install.command` runs the native unit tests and builds before installing; then follow `MAC_TEST_CHECKLIST.md` on the Mac.
+`VALIDATION.md` records completed checks. The portable C policy tests passed on Linux with address/undefined-behavior sanitizers. Native Swift unit tests and compilation for both architectures passed on GitHub's macOS 15 Intel runner. **Live networking, owner-window interaction, and execution on Monterey 12.7.6 or a physical Apple silicon Mac still require verification.** The source `Install.command` runs native tests and builds before installing; the binary release installer uses the precompiled outputs. Follow `MAC_TEST_CHECKLIST.md` on the target Mac.
 
 Technical references:
 

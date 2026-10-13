@@ -47,6 +47,6 @@ codesign --force --sign - --timestamp=none "$app"
 codesign --force --sign - --timestamp=none dist/ScreenGateService
 codesign --verify --strict "$app"
 codesign --verify --strict dist/ScreenGateService
-xcrun lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/ScreenGate"
-xcrun lipo -verify_arch arm64 x86_64 dist/ScreenGateService
+xcrun lipo "$app/Contents/MacOS/ScreenGate" -verify_arch arm64 x86_64
+xcrun lipo dist/ScreenGateService -verify_arch arm64 x86_64
 echo "Universal app built: dist/ScreenGate.app (arm64 + x86_64)"

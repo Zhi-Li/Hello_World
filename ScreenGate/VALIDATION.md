@@ -2,6 +2,8 @@
 
 Authoring environment: Linux x86_64, 11 October 2026. Apple SDKs, Swift, Xcode, and a live Mac were unavailable.
 
+Remote native checks, 13 October 2026: GitHub's macOS 15 Intel runner, using Xcode 16.4, compiled the application and service for arm64 and x86_64 and passed all eight Swift unit tests. An initial packaging failure revealed the incorrect argument order for `lipo -verify_arch`; the scripts now put the input file first. Nullable service identifiers and the public status initializer were corrected after the first native compile. Shared protocol values are Sendable. The screen-state bridge now accepts the IORegistry `CGSSessionScreenIsLocked` key as well as the legacy prefixed spelling. These checks do not test live enforcement on a person's Mac or establish execution on Monterey 12.7.6.
+
 Completed:
 
 - Built and ran the **actual C policy engine**, with `-Wall -Wextra -Werror -pedantic` and address/undefined-behavior sanitizers. Passed all 10,080 minutes of the default weekly schedule plus overnight/week-wrap boundaries, invalid windows, unrestricted gaps, inactive screens, pauses, stopped protection, sleep gaps, invalid elapsed values, exact-limit blocking, and allowance accumulation across windows.
@@ -10,11 +12,11 @@ Completed:
 - Reviewed local authentication, token binding, journal-before-disable ordering, restoration of previously enabled services, default schedule precedence, and arm64/x86_64 packaging paths.
 - For version 1.1.0, replaced macOS 13-only menu/window APIs with AppKit lifecycle management, moved weekday font styling onto Text for Monterey compatibility, and checked that the package, installer, and app metadata all target macOS 12.0 with a Swift 5.7 manifest.
 - Exercised the build script with mocked Mac tools: Swift 5.7.2 selects `--build-path`, Swift 5.9.2/6.2 select `--scratch-path`, and each successful path requests arm64 and x86_64 builds with deployment target 12.0. Swift 5.6.3, an unparseable Swift version, and macOS 11 are rejected before builds. These checks validate script branching and arguments, not native compilation or executable compatibility.
-- Added a manually triggered hosted-Mac workflow and a binary-release packager. The binary installer checks signatures and skips compilation. This workflow has not been run; no compiled Mac app has been produced.
+- Added a hosted-Mac workflow and a binary-release packager. The binary installer checks signatures and skips compilation. The workflow runs on the separate `screengate-build` branch; its native tests and both architecture compilations passed before the packaging argument-order fix.
 
 Not completed here:
 
-- Swift/macOS C bridge compilation or Swift unit-test execution.
+- Live UI interaction and running the privileged service against the runner's network settings (the remote build does not install the service or change the runner's network).
 - Real screen lock, sleep, external-display, or user-switching behavior.
 - Actual service disabling/restoration, VPN/tethering behavior, and launchd lifecycle.
 - Execution on macOS 12.7.6 or either macOS architecture, notarization, or a signed distributor installer.

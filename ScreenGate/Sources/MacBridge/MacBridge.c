@@ -74,7 +74,8 @@ int sg_screen_active(void) {
             if (CFGetTypeID(user) != CFDictionaryGetTypeID()) continue;
             if (CFDictionaryGetValue(user, CFSTR("kCGSSessionOnConsoleKey")) == kCFBooleanTrue) {
                 on_console = 1;
-                locked = CFDictionaryGetValue(user, CFSTR("kCGSSessionScreenIsLocked")) == kCFBooleanTrue;
+                locked = CFDictionaryGetValue(user, CFSTR("CGSSessionScreenIsLocked")) == kCFBooleanTrue ||
+                         CFDictionaryGetValue(user, CFSTR("kCGSSessionScreenIsLocked")) == kCFBooleanTrue;
             }
         }
     }

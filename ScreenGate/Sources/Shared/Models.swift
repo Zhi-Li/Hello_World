@@ -1,12 +1,12 @@
 import Foundation
 import Policy
 
-public enum GateMode: Int, Codable, CaseIterable {
+public enum GateMode: Int, Codable, CaseIterable, Sendable {
     case school = 0, afterSchool = 1
     public var title: String { self == .school ? "In-school" : "After-school" }
 }
 
-public struct TimeWindow: Codable, Identifiable, Equatable {
+public struct TimeWindow: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID
     public var mode: GateMode
     public var weekdays: [Int] // 0 Sunday ... 6 Saturday
@@ -24,7 +24,7 @@ public struct TimeWindow: Codable, Identifiable, Equatable {
     }
 }
 
-public struct GateSettings: Codable, Equatable {
+public struct GateSettings: Codable, Equatable, Sendable {
     public var dailyLimitMinutes: Int
     public var windows: [TimeWindow]
     public init(dailyLimitMinutes: Int = 90, windows: [TimeWindow] = [
@@ -56,7 +56,7 @@ public struct GateSettings: Codable, Equatable {
     }
 }
 
-public struct GateStatus: Codable {
+public struct GateStatus: Codable, Sendable {
     public var settings: GateSettings
     public var usedSeconds: Double
     public var mode: GateMode
@@ -74,7 +74,7 @@ public struct GateStatus: Codable {
     }
 }
 
-public struct GateRequest: Codable {
+public struct GateRequest: Codable, Sendable {
     public var command: String
     public var token: String?
     public var password: String?
@@ -87,7 +87,7 @@ public struct GateRequest: Codable {
     }
 }
 
-public struct GateResponse: Codable {
+public struct GateResponse: Codable, Sendable {
     public var ok: Bool
     public var error: String?
     public var token: String?

@@ -13,8 +13,8 @@ if [[ ! -x "$app/Contents/MacOS/ScreenGate" || ! -x "$helper" ]]; then
 fi
 codesign --verify --strict "$app"
 codesign --verify --strict "$helper"
-xcrun lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/ScreenGate"
-xcrun lipo -verify_arch arm64 x86_64 "$helper"
+xcrun lipo "$app/Contents/MacOS/ScreenGate" -verify_arch arm64 x86_64
+xcrun lipo "$helper" -verify_arch arm64 x86_64
 stage=$(mktemp -d "${TMPDIR:-/tmp}/screengate-release.XXXXXX")
 trap 'rm -rf "$stage"' EXIT
 release="$stage/ScreenGate"
