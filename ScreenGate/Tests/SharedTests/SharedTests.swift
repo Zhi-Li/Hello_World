@@ -43,6 +43,19 @@ final class SharedTests: XCTestCase {
         let result = try JSONDecoder().decode(GateRequest.self, from: JSONEncoder().encode(request))
         XCTAssertEqual(result.password, request.password); XCTAssertEqual(result.settings, request.settings)
     }
+    func testOwnerStatusResponsePreservesRestrictionAndRestorationError() throws {
+        let status = GateStatus(settings: GateSettings(dailyLimitMinutes: 60), usedSeconds: 3600,
+            mode: .afterSchool, paused: false, stopped: false, blocked: true, active: true,
+            networkError: "Restoration will retry", day: "2026-10-13")
+        let response = GateResponse(ok: true, status: status)
+        let decoded = try JSONDecoder().decode(GateResponse.self, from: JSONEncoder().encode(response))
+        let received = try XCTUnwrap(decoded.status)
+        XCTAssertTrue(decoded.ok); XCTAssertTrue(received.blocked)
+        XCTAssertEqual(received.usedSeconds, 3600)
+        XCTAssertEqual(received.settings.dailyLimitMinutes, 60)
+        XCTAssertEqual(received.networkError, status.networkError)
+        XCTAssertEqual(received.day, status.day)
+    }
     func testLimitDoesNotAffectSchoolPausedOrStoppedModes() {
         XCTAssertEqual(sg_should_block(600, 600, 1, 0, 0), 1)
         XCTAssertEqual(sg_should_block(600, 600, 0, 0, 0), 0)

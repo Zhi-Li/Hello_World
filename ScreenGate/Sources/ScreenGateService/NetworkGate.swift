@@ -4,6 +4,12 @@ import Shared
 
 final class NetworkGate {
     // Operate on stable service UUIDs. Never enable services that were already disabled.
+    private func serviceID(_ service: SCNetworkService) throws -> String {
+        guard let id = SCNetworkServiceGetServiceID(service) else {
+            throw GateError("Cannot identify a network service. Network settings were not changed.")
+        }
+        return id as String
+    }
     private func preferences() throws -> SCPreferences {
         guard let prefs = SCPreferencesCreate(nil, "ScreenGate" as CFString, nil) else {
             throw GateError("Cannot open macOS network settings.")
@@ -20,7 +26,7 @@ final class NetworkGate {
         var changed = false
         if block {
             let enabled = services.filter { SCNetworkServiceGetEnabled($0) }
-            let ids = enabled.map { SCNetworkServiceGetServiceID($0) as String }
+            let ids = try enabled.map { try serviceID($0) }
             for id in ids where !state.restoreServiceIDs.contains(id) { state.restoreServiceIDs.append(id) }
             if !ids.isEmpty { try state.save() } // journal first, including before a process crash
             for service in enabled {
@@ -28,7 +34,8 @@ final class NetworkGate {
                 changed = true
             }
         } else {
-            for service in services where state.restoreServiceIDs.contains(SCNetworkServiceGetServiceID(service) as String) {
+            for service in services {
+                guard state.restoreServiceIDs.contains(try serviceID(service)) else { continue }
                 guard SCNetworkServiceSetEnabled(service, true) else { throw GateError("Cannot restore a network service.") }
                 changed = true
             }

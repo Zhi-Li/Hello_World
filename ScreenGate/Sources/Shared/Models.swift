@@ -66,6 +66,12 @@ public struct GateStatus: Codable {
     public var active: Bool
     public var networkError: String?
     public var day: String
+    public init(settings: GateSettings, usedSeconds: Double, mode: GateMode, paused: Bool,
+                stopped: Bool, blocked: Bool, active: Bool, networkError: String?, day: String) {
+        self.settings = settings; self.usedSeconds = usedSeconds; self.mode = mode
+        self.paused = paused; self.stopped = stopped; self.blocked = blocked; self.active = active
+        self.networkError = networkError; self.day = day
+    }
 }
 
 public struct GateRequest: Codable {
