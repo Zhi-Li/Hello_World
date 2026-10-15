@@ -15,6 +15,8 @@ The binaries target macOS 12.0. A successful build on the remote Mac does not es
 
 ## New in version 1.2.0
 
+**Version 1.2.1:** hover over the menu-bar shield to see today's recorded screen time, refreshed about every two seconds. It includes school hours and offline use, just like the calendar. The tooltip works while owner controls are locked or closed; settings and history still require the owner password. Only the current console account can read this today-only summary. If recording has not begun or the service is unavailable, the tooltip says so.
+
 - **Screen-time calendar:** select a date in the compact monthly calendar to see recorded awake, unlocked screen time, including school hours and offline use. Calendar totals keep recording when protection is paused, and stop when the owner uses Stop & Quit. Resetting the allowance counter preserves calendar history. All-day recording begins with this update after protection is resumed; older saved records are labeled after-school only. The first recording date shows when recording began.
 - **Extra time for today:** add 15, 30, 60, or a custom number of minutes from owner controls. Extra time survives a restart for today, expires at local midnight, and leaves the regular daily allowance unchanged. The effective daily allowance cannot exceed 1,440 minutes. If the new allowance exceeds usage, ScreenGate restores connections it disabled; existing Pause/Stop states remain in effect.
 

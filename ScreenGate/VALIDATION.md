@@ -6,6 +6,8 @@ Remote native checks, 13 October 2026: GitHub's macOS 15 Intel runner, using Xco
 
 Completed:
 
+- Version 1.2.1 adds a current-console, read-only today summary for the menu-bar tooltip, with tests for duration formatting, midnight rollover, missing/invalid totals, and a wire response without owner status/history/session data. The owner-window polling path still requires authentication; the locked path fetches only the minimal summary.
+
 - Version 1.2.0 adds automated accounting coverage for school/offline totals, resets preserving history, paused/stopped behavior, sleep/clock gaps, midnight and DST splits, extension persistence and bounds, legacy history labeling, month filtering, and wire messages. The hosted Mac build runs these tests along with the existing tests before packaging.
 
 - Built and ran the **actual C policy engine**, with `-Wall -Wextra -Werror -pedantic` and address/undefined-behavior sanitizers. Passed all 10,080 minutes of the default weekly schedule plus overnight/week-wrap boundaries, invalid windows, unrestricted gaps, inactive screens, pauses, stopped protection, sleep gaps, invalid elapsed values, exact-limit blocking, and allowance accumulation across windows.

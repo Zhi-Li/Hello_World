@@ -106,10 +106,12 @@ public struct GateResponse: Codable, Sendable {
     public var status: GateStatus?
     public var unauthorized: Bool?
     public var history: ScreenTimeMonth?
+    public var today: TodayScreenTime?
     public init(ok: Bool, error: String? = nil, token: String? = nil, status: GateStatus? = nil,
-                unauthorized: Bool? = nil, history: ScreenTimeMonth? = nil) {
+                unauthorized: Bool? = nil, history: ScreenTimeMonth? = nil, today: TodayScreenTime? = nil) {
         self.ok = ok; self.error = error; self.token = token; self.status = status; self.unauthorized = unauthorized
         self.history = history
+        self.today = today
     }
 }
 

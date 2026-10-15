@@ -1,16 +1,21 @@
 import SwiftUI
 import AppKit
+import Combine
 
 // AppKit owns the status item and window lifecycle so the same UI works on Monterey.
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let model = AppModel()
     private var ownerWindow: NSWindow!
     private var statusItem: NSStatusItem!
+    private var tooltipSubscription: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         makeWindow()
         makeMenus()
+        tooltipSubscription = model.$menuBarTooltip.sink { [weak self] text in
+            self?.statusItem.button?.toolTip = text
+        }
         if !CommandLine.arguments.contains("--background") { showOwnerControls(nil) }
     }
 
@@ -32,7 +37,7 @@ import AppKit
         let image = NSImage(systemSymbolName: "shield.lefthalf.filled", accessibilityDescription: "ScreenGate")
         image?.isTemplate = true
         statusItem.button?.image = image
-        statusItem.button?.toolTip = "ScreenGate · Owner controls"
+        statusItem.button?.toolTip = model.menuBarTooltip
         let statusMenu = NSMenu()
         let heading = NSMenuItem(title: "ScreenGate", action: nil, keyEquivalent: "")
         heading.isEnabled = false; statusMenu.addItem(heading)

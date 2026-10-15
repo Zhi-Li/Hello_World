@@ -79,6 +79,15 @@ final class Service {
 
     func handle(_ request: GateRequest, uid: UInt32) -> GateResponse {
         do {
+            if request.command == "today" {
+                let consoleUID = sg_console_uid()
+                guard consoleUID >= 0, uid == UInt32(consoleUID) else {
+                    throw GateError("Today's screen time is available only in the active console session.")
+                }
+                // Read the timer's latest snapshot; this endpoint cannot change protection.
+                let day = dayKey(Date())
+                return GateResponse(ok: true, today: TodayScreenTime(day: day, screenSeconds: state.ledger.totals[day]))
+            }
             sessions = sessions.filter { $0.value.expires > Date() }
             if request.command == "login" {
                 try authenticate(request.password ?? "", uid: uid)

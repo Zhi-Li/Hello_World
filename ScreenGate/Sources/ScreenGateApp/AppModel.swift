@@ -15,6 +15,7 @@ import Shared
     @Published var history: ScreenTimeMonth?
     @Published var historyLoading = false
     @Published var historyError: String?
+    @Published var menuBarTooltip = "ScreenGate\nToday's screen time: Loading…"
     var quitAuthorized = false
     private var lastInteraction = Date()
     private var polling = false
@@ -27,6 +28,7 @@ import Shared
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.poll() }
         }
+        poll()
     }
     var unlocked: Bool { token != nil }
     func interacted() { lastInteraction = Date() }
@@ -85,6 +87,9 @@ import Shared
     }
     private func acceptStatus(_ value: GateStatus?) {
         status = value
+        if let value {
+            menuBarTooltip = TodayScreenTime(day: value.day, screenSeconds: value.screenSeconds).tooltip()
+        }
         guard let value, let total = value.screenSeconds, var month = history,
               value.day.hasPrefix(month.month + "-") else { return }
         if let index = month.days.firstIndex(where: { $0.day == value.day }) {
@@ -144,21 +149,31 @@ import Shared
         }
     }
     private func poll() {
-        guard let token, !busy, !polling else { return }
-        if Date().timeIntervalSince(lastInteraction) >= 300 { lock(); return }
+        guard !busy, !polling else { return }
+        if token != nil && Date().timeIntervalSince(lastInteraction) >= 300 { lock() }
+        let ownerToken = token
         polling = true
         transport.async {
-            let result = Result { try GateClient.call(GateRequest("status", token: token)) }
+            let request = ownerToken.map { GateRequest("status", token: $0) } ?? GateRequest("today")
+            let result = Result { try GateClient.call(request) }
             DispatchQueue.main.async {
                 self.polling = false
                 // Ignore responses from an owner session that has since been locked.
-                guard self.token == token else { return }
+                guard self.token == ownerToken else { return }
                 switch result {
                 case .success(let response):
-                    if response.ok { self.acceptStatus(response.status) }
-                    else if response.unauthorized == true { self.lock() }
-                    else { self.error = response.error }
-                case .failure(let error): self.error = error.localizedDescription
+                    if response.ok, ownerToken != nil { self.acceptStatus(response.status) }
+                    else if response.ok, let today = response.today { self.menuBarTooltip = today.tooltip() }
+                    else {
+                        self.menuBarTooltip = TodayScreenTime.unavailableTooltip
+                        if ownerToken != nil {
+                            if response.unauthorized == true { self.lock() }
+                            else { self.error = response.error }
+                        }
+                    }
+                case .failure(let error):
+                    self.menuBarTooltip = TodayScreenTime.unavailableTooltip
+                    if ownerToken != nil { self.error = error.localizedDescription }
                 }
             }
         }
