@@ -11,12 +11,20 @@ struct StoredState: Codable {
     var stopped = false
     // UUIDs of network services we changed, written BEFORE disabling them.
     var restoreServiceIDs: [String] = []
+    // Optional on disk so version 1 state files migrate without losing owner credentials.
+    var accounting: ScreenTimeLedger?
+    var ledger: ScreenTimeLedger {
+        get { accounting ?? ScreenTimeLedger(legacyUsage: usage) }
+        set { accounting = newValue }
+    }
 
     static func load() throws -> StoredState {
-        let state = try JSONDecoder().decode(Self.self, from: Data(contentsOf: URL(fileURLWithPath: GatePaths.state)))
+        var state = try JSONDecoder().decode(Self.self, from: Data(contentsOf: URL(fileURLWithPath: GatePaths.state)))
         guard state.version == 1, state.password.salt.count == 32, state.password.hash.count == 32,
               state.usage.values.allSatisfy({ $0.isFinite && $0 >= 0 }) else { throw GateError("Invalid ScreenGate state.") }
         try state.settings.validate()
+        try state.ledger.validate()
+        state.accounting = state.ledger
         return state
     }
     func save() throws {
@@ -33,6 +41,5 @@ struct StoredState: Codable {
 }
 
 func dayKey(_ date: Date, calendar: Calendar = .autoupdatingCurrent) -> String {
-    let c = calendar.dateComponents([.year, .month, .day], from: date)
-    return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+    ScreenDates.dayKey(date, calendar: calendar)
 }

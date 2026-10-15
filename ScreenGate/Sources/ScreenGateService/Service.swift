@@ -25,18 +25,11 @@ final class Service {
         let now = Date(), uptime = ProcessInfo.processInfo.systemUptime
         let elapsed = uptime - lastUptime
         active = sg_screen_active() == 1
-        let wallDelta = now.timeIntervalSince(lastDate)
-        if elapsed > 0 && elapsed <= 2.5 && abs(wallDelta - elapsed) < 2 && active && lastActive {
-            // Split short samples at schedule and midnight boundaries, including DST transitions.
-            let steps = max(1, Int(ceil(elapsed / 0.25)))
-            for i in 0..<steps {
-                let sample = lastDate.addingTimeInterval(wallDelta * (Double(i) + 0.5) / Double(steps))
-                let day = dayKey(sample)
-                state.usage[day] = sg_accumulate(state.usage[day] ?? 0, elapsed / Double(steps),
-                    state.settings.mode(at: sample) == .afterSchool ? 1 : 0,
-                    1, state.paused ? 1 : 0, state.stopped ? 1 : 0)
-            }
-        }
+        var ledger = state.ledger
+        var usage = state.usage
+        ledger.record(from: lastDate, to: now, elapsed: elapsed, active: active && lastActive,
+            paused: state.paused, stopped: state.stopped, settings: state.settings, allowanceUsage: &usage)
+        state.ledger = ledger; state.usage = usage
         lastDate = now; lastUptime = uptime; lastActive = active
         // Retain dates so moving the clock backwards cannot erase that day's allowance.
         let cutoff = dayKey(Calendar.current.date(byAdding: .day, value: -45, to: now) ?? now)
@@ -55,7 +48,8 @@ final class Service {
     }
 
     private func shouldBlock(_ now: Date) -> Bool {
-        sg_should_block(state.usage[dayKey(now)] ?? 0, Double(state.settings.dailyLimitMinutes * 60),
+        sg_should_block(state.usage[dayKey(now)] ?? 0,
+            Double(state.ledger.effectiveLimit(baseMinutes: state.settings.dailyLimitMinutes, on: now) * 60),
             state.settings.mode(at: now) == .afterSchool ? 1 : 0,
             state.paused ? 1 : 0, state.stopped ? 1 : 0) == 1
     }
@@ -64,7 +58,9 @@ final class Service {
         let now = Date()
         return GateStatus(settings: state.settings, usedSeconds: state.usage[dayKey(now)] ?? 0,
             mode: state.settings.mode(at: now), paused: state.paused, stopped: state.stopped,
-            blocked: blocked, active: active, networkError: networkError, day: dayKey(now))
+            blocked: blocked, active: active, networkError: networkError, day: dayKey(now),
+            extraMinutes: state.ledger.extraMinutes(on: now), screenSeconds: state.ledger.totals[dayKey(now)],
+            recordingStartedAt: state.ledger.recordingStartedAt)
     }
 
     private func authenticate(_ password: String, uid: UInt32) throws {
@@ -97,6 +93,19 @@ final class Service {
             }
             switch request.command {
             case "status": tick()
+            case "history":
+                guard let month = request.month else { throw GateError("Choose a calendar month.") }
+                tick()
+                return GateResponse(ok: true, status: status(), history: try state.ledger.history(for: month))
+            case "extend":
+                let now = Date()
+                guard request.day == dayKey(now) else {
+                    throw GateError("The date changed. Refresh the controls and add time for today.")
+                }
+                guard let minutes = request.extraMinutes else { throw GateError("Choose how many minutes to add.") }
+                tick()
+                try state.ledger.extend(minutes: minutes, baseMinutes: state.settings.dailyLimitMinutes, on: now)
+                try state.save(); tick(forceNetwork: true)
             case "save":
                 guard let settings = request.settings else { throw GateError("Settings are missing.") }
                 try settings.validate()

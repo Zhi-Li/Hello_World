@@ -66,11 +66,18 @@ public struct GateStatus: Codable, Sendable {
     public var active: Bool
     public var networkError: String?
     public var day: String
+    public var extraMinutes: Int?
+    public var screenSeconds: Double?
+    public var recordingStartedAt: Date?
+    public var effectiveLimitMinutes: Int { min(1440, settings.dailyLimitMinutes + (extraMinutes ?? 0)) }
     public init(settings: GateSettings, usedSeconds: Double, mode: GateMode, paused: Bool,
-                stopped: Bool, blocked: Bool, active: Bool, networkError: String?, day: String) {
+                stopped: Bool, blocked: Bool, active: Bool, networkError: String?, day: String,
+                extraMinutes: Int? = nil, screenSeconds: Double? = nil, recordingStartedAt: Date? = nil) {
         self.settings = settings; self.usedSeconds = usedSeconds; self.mode = mode
         self.paused = paused; self.stopped = stopped; self.blocked = blocked; self.active = active
         self.networkError = networkError; self.day = day
+        self.extraMinutes = extraMinutes; self.screenSeconds = screenSeconds
+        self.recordingStartedAt = recordingStartedAt
     }
 }
 
@@ -80,10 +87,15 @@ public struct GateRequest: Codable, Sendable {
     public var password: String?
     public var newPassword: String?
     public var settings: GateSettings?
+    public var month: String?
+    public var extraMinutes: Int?
+    public var day: String?
     public init(_ command: String, token: String? = nil, password: String? = nil,
-                newPassword: String? = nil, settings: GateSettings? = nil) {
+                newPassword: String? = nil, settings: GateSettings? = nil,
+                month: String? = nil, extraMinutes: Int? = nil, day: String? = nil) {
         self.command = command; self.token = token; self.password = password
         self.newPassword = newPassword; self.settings = settings
+        self.month = month; self.extraMinutes = extraMinutes; self.day = day
     }
 }
 
@@ -93,8 +105,11 @@ public struct GateResponse: Codable, Sendable {
     public var token: String?
     public var status: GateStatus?
     public var unauthorized: Bool?
-    public init(ok: Bool, error: String? = nil, token: String? = nil, status: GateStatus? = nil, unauthorized: Bool? = nil) {
+    public var history: ScreenTimeMonth?
+    public init(ok: Bool, error: String? = nil, token: String? = nil, status: GateStatus? = nil,
+                unauthorized: Bool? = nil, history: ScreenTimeMonth? = nil) {
         self.ok = ok; self.error = error; self.token = token; self.status = status; self.unauthorized = unauthorized
+        self.history = history
     }
 }
 

@@ -13,6 +13,13 @@ The app is installed at `/Applications/ScreenGate.app`. The installer uses the c
 
 The binaries target macOS 12.0. A successful build on the remote Mac does not establish live compatibility with Monterey 12.7.6; follow `MAC_TEST_CHECKLIST.md` before relying on enforcement.
 
+## New in version 1.2.0
+
+- **Screen-time calendar:** select a date in the compact monthly calendar to see recorded awake, unlocked screen time, including school hours and offline use. Calendar totals keep recording when protection is paused, and stop when the owner uses Stop & Quit. Resetting the allowance counter preserves calendar history. All-day recording begins with this update after protection is resumed; older saved records are labeled after-school only. The first recording date shows when recording began.
+- **Extra time for today:** add 15, 30, 60, or a custom number of minutes from owner controls. Extra time survives a restart for today, expires at local midnight, and leaves the regular daily allowance unchanged. The effective daily allowance cannot exceed 1,440 minutes. If the new allowance exceeds usage, ScreenGate restores connections it disabled; existing Pause/Stop states remain in effect.
+
+To update, run this download's Install.command. Existing owner credentials, settings, and usage are preserved. The installer relaunches the current account's controls. Protection stays stopped after an upgrade; unlock the controls and click Resume protection. Keep the recovery scripts accessible offline.
+
 ## Controls
 
 In-school time is unrestricted. After-school time accumulates while a screen is awake and the console session is unlocked. At the daily allowance, ScreenGate disables enabled network services, cutting local-network and internet access. Pause or Stop & Quit restores services it disabled. Stop & Quit requires the owner password. Closing or force-quitting the menu app leaves the root service running.

@@ -30,6 +30,8 @@ if sudo test -f "$service"; then
     sudo launchctl bootout system "$daemon" 2>/dev/null || true
     sudo "$service" --recover
 fi
+# Relaunch the current account's UI so an update opens the new controls.
+pkill -x -u "$(id -u)" ScreenGate 2>/dev/null || true
 sudo install -d -m 700 -o root -g wheel "$state_dir"
 sudo install -m 700 -o root -g wheel dist/ScreenGateService "$service"
 if ! sudo test -f "$state_dir/state.json"; then

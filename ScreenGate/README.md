@@ -27,15 +27,19 @@ Version **1.1.0** replaces the newer SwiftUI menu-bar/window APIs with AppKit `N
 
 ## What it does
 
+Version **1.2.0** adds a compact monthly screen-time calendar and owner-only extra allowance for today. Click a date to see recorded awake/unlocked time, including in-school and offline use. The calendar total is independent of the resettable after-school allowance counter. It continues while protection is paused, and stops when the owner stops the app. Calendar history starts after this update is installed and protection is resumed; older saved allowance records remain visible as **after-school only**, since full-day time was not collected by earlier versions. The first recording day is labeled with its start time. Days without a recording are shown as unavailable rather than fabricated zeros.
+
+Use **Extra time for today** to add 15, 30, 60, or a custom number of minutes. Additions accumulate and persist through restarts for that local calendar date, then expire at midnight. They do not change the regular daily allowance or reset usage/history. Extending a used-up allowance restores ScreenGate-disabled connections when the new allowance exceeds today's used amount. Paused or stopped protection stays paused/stopped. The effective allowance is capped at 1,440 minutes, and the service checks the date so a request made across midnight cannot extend the wrong day.
+
 | Control or state | Behavior |
 | --- | --- |
 | In-school | Internet is unrestricted; this time does not consume the daily allowance. |
 | After-school | Accumulates screen-awake, unlocked time across all logged-in console accounts on this Mac. At the allowance, network services are disabled. |
-| Pause | Stops counting and restores connections disabled by ScreenGate. Pause persists through a restart until the owner resumes. |
+| Pause | Stops allowance counting and restores connections disabled by ScreenGate. Calendar totals continue recording. Pause persists through a restart until the owner resumes. |
 | Resume | Restarts counting/enforcement. If today's allowance is already used, the connection is blocked again during after-school time. |
 | Stop & Quit | Requires a fresh owner password, restores connections, saves the stopped state, and exits the app and service. Protection stays stopped when reopened or rebooted until the owner resumes. |
 | Close the owner window | Locks the controls. Background enforcement continues. |
-| Reset today's usage | Sets the allowance used today to zero and reevaluates the connection. Owner access required. |
+| Reset today's allowance counter | Sets allowance usage to zero and reevaluates the connection. Calendar totals and extra minutes are preserved. Owner access required. |
 | Change password | Requires the current owner password. Other unlocked sessions are invalidated. |
 
 The menu bar app starts at login, and the root service starts at boot. The service also supports launchd socket activation, so reopening the app can reach the service after an owner-approved exit. An unexpected service crash is configured to restart through launchd. Force-quitting the menu bar app does not stop the root enforcement service.

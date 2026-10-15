@@ -1,7 +1,7 @@
 import SwiftUI
 import Shared
 
-private let accent = Color(red: 0.21, green: 0.38, blue: 0.86)
+let accent = Color(red: 0.21, green: 0.38, blue: 0.86)
 
 @MainActor struct OwnerView: View {
     @EnvironmentObject var model: AppModel
@@ -63,10 +63,11 @@ private let accent = Color(red: 0.21, green: 0.38, blue: 0.86)
                                 .font(.headline).foregroundStyle(accent)
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 Text(duration(s.usedSeconds)).font(.system(size: 42, weight: .semibold, design: .rounded))
-                                Text("/ \(s.settings.dailyLimitMinutes) min today").foregroundStyle(.secondary)
+                                Text("/ \(s.effectiveLimitMinutes) min today").foregroundStyle(.secondary)
                             }
-                            ProgressView(value: min(s.usedSeconds, Double(s.settings.dailyLimitMinutes * 60)),
-                                         total: Double(s.settings.dailyLimitMinutes * 60)).tint(accent)
+                            ProgressView(value: min(s.usedSeconds, Double(s.effectiveLimitMinutes * 60)),
+                                         total: Double(s.effectiveLimitMinutes * 60)).tint(accent)
+                            Text("After-school allowance used").font(.caption).foregroundStyle(.secondary)
                             Text(s.active ? "Screen awake and unlocked" : "Screen sleeping, locked, or logged out")
                                 .font(.caption).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -75,7 +76,7 @@ private let accent = Color(red: 0.21, green: 0.38, blue: 0.86)
                             Label(s.blocked ? "Internet blocked" : "Internet available",
                                   systemImage: s.blocked ? "wifi.slash" : "wifi")
                                 .font(.headline).foregroundStyle(s.blocked ? Color.orange : Color.green)
-                            Text(s.stopped ? "Resume to start protection again." : s.paused ? "Time counting is paused." :
+                            Text(s.stopped ? "Resume to start protection again." : s.paused ? "Allowance counting is paused." :
                                  s.mode == .school ? "No restrictions during in-school time." : "Internet stops when the daily allowance is used.")
                                 .font(.callout).foregroundStyle(.secondary).frame(width: 215, alignment: .leading)
                             Button(s.paused || s.stopped ? "Resume protection" : "Pause & restore internet") {
@@ -88,10 +89,13 @@ private let accent = Color(red: 0.21, green: 0.38, blue: 0.86)
                 if let error = model.error { banner(error, color: .red) }
                 if let notice = model.notice { banner(notice, color: .green) }
 
+                TodayAllowanceExtension()
+                UsageCalendarView()
+
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Daily allowance").font(.headline)
-                        Text("After-school screen time resets at local midnight.").font(.caption).foregroundStyle(.secondary)
+                        Text("Regular daily allowance").font(.headline)
+                        Text("Resets at local midnight. Use the controls above to add time for today only.").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                     TextField("Minutes", value: $model.draft.dailyLimitMinutes, format: .number)
@@ -116,7 +120,7 @@ private let accent = Color(red: 0.21, green: 0.38, blue: 0.86)
                 }
                 Divider()
                 HStack {
-                    Button("Reset today's usage…") { confirmingReset = true }
+                    Button("Reset today's allowance counter…") { confirmingReset = true }
                     Button("Change password…") { model.error = nil; model.showingPassword = true }
                     Spacer()
                     Button("Stop & Quit…") { model.requestQuit() }.foregroundStyle(.red)
@@ -124,8 +128,8 @@ private let accent = Color(red: 0.21, green: 0.38, blue: 0.86)
             }.padding(24)
         }
         .onChange(of: model.draft) { _ in model.interacted() }
-        .confirmationDialog("Reset today's after-school usage to zero?", isPresented: $confirmingReset) {
-            Button("Reset usage") { model.action("reset") }
+        .confirmationDialog("Reset today's allowance counter? Calendar history will be kept.", isPresented: $confirmingReset) {
+            Button("Reset allowance counter") { model.action("reset") }
         }
     }
     private func add(_ mode: GateMode) {

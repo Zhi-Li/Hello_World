@@ -12,6 +12,9 @@ import Shared
     @Published var notice: String?
     @Published var showingQuit = false
     @Published var showingPassword = false
+    @Published var history: ScreenTimeMonth?
+    @Published var historyLoading = false
+    @Published var historyError: String?
     var quitAuthorized = false
     private var lastInteraction = Date()
     private var polling = false
@@ -37,6 +40,7 @@ import Shared
         generation += 1
         if let token { transport.async { _ = try? GateClient.call(GateRequest("logout", token: token)) } }
         token = nil; status = nil; draft = GateSettings(); error = nil; notice = nil
+        history = nil; historyLoading = false; historyError = nil
     }
     func action(_ command: String) {
         guard let token else { return }
@@ -51,6 +55,46 @@ import Shared
         do { try draft.validate() } catch { self.error = error.localizedDescription; return }
         guard let token else { return }; interacted()
         send(GateRequest("save", token: token, settings: draft)) { _ in self.notice = "Schedule and allowance saved." }
+    }
+    func extendToday(minutes: Int) {
+        guard let token, let day = status?.day else { return }; interacted()
+        send(GateRequest("extend", token: token, extraMinutes: minutes, day: day)) { _ in
+            self.notice = "Added \(minutes) minutes for today. The extra time expires at midnight."
+        }
+    }
+    func loadHistory(month: String) {
+        guard let token, !historyLoading else { return }
+        interacted(); historyLoading = true; historyError = nil
+        if history?.month != month { history = nil }
+        let expectedGeneration = generation
+        transport.async {
+            let result = Result { try GateClient.call(GateRequest("history", token: token, month: month)) }
+            DispatchQueue.main.async {
+                guard self.generation == expectedGeneration, self.token == token else { return }
+                self.historyLoading = false
+                switch result {
+                case .success(let response):
+                    if response.ok, let history = response.history {
+                        self.history = history; self.acceptStatus(response.status)
+                    } else if response.unauthorized == true { self.lock() }
+                    else { self.historyError = response.error ?? "History could not be loaded." }
+                case .failure(let error): self.historyError = error.localizedDescription
+                }
+            }
+        }
+    }
+    private func acceptStatus(_ value: GateStatus?) {
+        status = value
+        guard let value, let total = value.screenSeconds, var month = history,
+              value.day.hasPrefix(month.month + "-") else { return }
+        if let index = month.days.firstIndex(where: { $0.day == value.day }) {
+            month.days[index].totalSeconds = total
+        } else {
+            month.days.append(ScreenTimeDay(day: value.day, totalSeconds: total))
+            month.days.sort { $0.day < $1.day }
+        }
+        if let started = value.recordingStartedAt { month.recordingStartedAt = started }
+        history = month
     }
     func changePassword(current: String, new: String) {
         guard let token else { return }; interacted()
@@ -92,7 +136,7 @@ import Shared
                 guard self.generation == expectedGeneration else { return }
                 switch result {
                 case .success(let response):
-                    if response.ok { self.status = response.status; completion(response) }
+                    if response.ok { self.acceptStatus(response.status); completion(response) }
                     else { if response.unauthorized == true { self.lock() }; self.error = response.error }
                 case .failure(let error): self.error = error.localizedDescription
                 }
@@ -111,7 +155,7 @@ import Shared
                 guard self.token == token else { return }
                 switch result {
                 case .success(let response):
-                    if response.ok { self.status = response.status }
+                    if response.ok { self.acceptStatus(response.status) }
                     else if response.unauthorized == true { self.lock() }
                     else { self.error = response.error }
                 case .failure(let error): self.error = error.localizedDescription
