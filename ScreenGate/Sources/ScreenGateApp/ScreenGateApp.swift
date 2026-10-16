@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Combine
+import MenuBarUI
 
 // AppKit owns the status item and window lifecycle so the same UI works on Monterey.
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -8,13 +9,16 @@ import Combine
     private var ownerWindow: NSWindow!
     private var statusItem: NSStatusItem!
     private var tooltipSubscription: AnyCancellable?
+    private var hoverController: MenuBarHoverController?
+    private var usageMenuItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         makeWindow()
         makeMenus()
         tooltipSubscription = model.$menuBarTooltip.sink { [weak self] text in
-            self?.statusItem.button?.toolTip = text
+            self?.hoverController?.update(text: text)
+            self?.usageMenuItem.title = text.components(separatedBy: "\n").dropFirst().first ?? "Today's screen time: Unavailable"
         }
         if !CommandLine.arguments.contains("--background") { showOwnerControls(nil) }
     }
@@ -37,14 +41,20 @@ import Combine
         let image = NSImage(systemSymbolName: "shield.lefthalf.filled", accessibilityDescription: "ScreenGate")
         image?.isTemplate = true
         statusItem.button?.image = image
-        statusItem.button?.toolTip = model.menuBarTooltip
         let statusMenu = NSMenu()
         let heading = NSMenuItem(title: "ScreenGate", action: nil, keyEquivalent: "")
         heading.isEnabled = false; statusMenu.addItem(heading)
+        usageMenuItem = NSMenuItem(title: "Today's screen time: Loading…", action: nil, keyEquivalent: "")
+        usageMenuItem.isEnabled = false; statusMenu.addItem(usageMenuItem)
+        statusMenu.addItem(.separator())
         statusMenu.addItem(menuItem("Open owner controls…", action: #selector(showOwnerControls(_:))))
         statusMenu.addItem(.separator())
         statusMenu.addItem(menuItem("Stop & Quit…", action: #selector(stopAndQuit(_:))))
         statusItem.menu = statusMenu
+        if let button = statusItem.button {
+            hoverController = MenuBarHoverController(button: button, menu: statusMenu, text: model.menuBarTooltip)
+            hoverController?.onHover = { [weak self] in self?.model.refreshMenuBarSummary() }
+        }
 
         // Supply an Edit menu so password/text fields support the usual Mac shortcuts.
         let mainMenu = NSMenu()
@@ -84,6 +94,7 @@ import Combine
         showOwnerControls(nil); return true
     }
     func applicationDidResignActive(_ notification: Notification) { model.lock() }
+    func applicationWillTerminate(_ notification: Notification) { hoverController?.invalidate() }
     func windowWillClose(_ notification: Notification) { model.lock() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

@@ -25,11 +25,14 @@ import Shared
 
     init() {
         Self.instance = self
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.poll() }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
         poll()
     }
+    func refreshMenuBarSummary() { poll() }
     var unlocked: Bool { token != nil }
     func interacted() { lastInteraction = Date() }
     func unlock(_ password: String) {

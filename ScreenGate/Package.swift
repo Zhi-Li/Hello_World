@@ -11,8 +11,10 @@ let package = Package(
             .linkedFramework("CoreGraphics"), .linkedFramework("IOKit"),
             .linkedFramework("SystemConfiguration"), .linkedFramework("Security")]),
         .target(name: "Shared", dependencies: ["Policy", "MacBridge"]),
+        .target(name: "MenuBarUI"),
         .executableTarget(name: "ScreenGateService", dependencies: ["Shared", "MacBridge", "Policy"]),
-        .executableTarget(name: "ScreenGateApp", dependencies: ["Shared"]),
-        .testTarget(name: "SharedTests", dependencies: ["Shared", "Policy"])
+        .executableTarget(name: "ScreenGateApp", dependencies: ["Shared", "MenuBarUI"]),
+        .testTarget(name: "SharedTests", dependencies: ["Shared", "Policy"]),
+        .testTarget(name: "MenuBarUITests", dependencies: ["MenuBarUI"])
     ]
 )

@@ -1,5 +1,7 @@
 # First-run checks on the target Mac
 
+**Hover 1.3.2:** with another app active and ScreenGate controls locked/closed, move the pointer onto the shield without clicking. A small panel should appear immediately, show today's total and split, update while held there, and disappear on exit. Typing focus must stay in the other app. Click the shield: the hover panel must close, today's total must appear in the menu, and owner controls must still open normally. Repeat on each monitor and with full-screen apps. At midnight it must update to the new date.
+
 **Installer 1.3.1:** on macOS 27, install from a browser-downloaded ZIP. Approve the executable when requested. Confirm both installed ScreenGate plists have no com.apple.quarantine attribute and the daemon registers. Retry after interrupting before initialization, and after the password is created but registration fails: the existing password and history must survive. Try Recover.command and a reboot. A subsequent bootstrap failure must print the launchd-log command. macOS 27 launchd policy is not exercised by the macOS 15 build runner.
 
 These live checks have not been run on a person's Mac. Run them before relying on ScreenGate for unattended enforcement. Native compilation and unit tests are separate from these checks.

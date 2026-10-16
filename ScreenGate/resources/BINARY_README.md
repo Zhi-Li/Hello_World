@@ -19,6 +19,8 @@ The binaries target macOS 12.0. A successful build on the remote Mac does not es
 
 ## Screen-time features
 
+**Hover update 1.3.2:** the shield now shows a dedicated read-only panel as soon as the mouse enters it. It displays today's total and in-school/after-school split while ScreenGate is in the background or controls are locked. The panel updates in place about every two seconds without restarting macOS's native tooltip delay. It hides when the mouse leaves or the click menu opens and does not take keyboard focus. Clicking the shield also shows today's total above the owner controls. The macOS 27 installer fix from 1.3.1 is included.
+
 **Version 1.3.0:** click any recorded calendar date to see **In-school**, **After-school**, and the combined total. Hover over the menu-bar shield to see today's total and split, refreshed about every two seconds, even while owner controls are locked or closed. Both categories include offline and paused usage. Time follows the schedule in effect when recorded; editing schedules later does not change history. If your schedule has gaps, their time appears separately as **Outside scheduled modes**. Settings and history still require the owner password; only the current console account can read the today-only tooltip summary.
 
 Existing totals, settings, passwords, and today's extra allowance are preserved. Earlier versions did not collect a mode split, so older totals show the breakdown as unavailable. On a date with old and new recordings, the older portion appears as **Earlier unsplit time**. After installing, unlock and **Resume** to start split recording.

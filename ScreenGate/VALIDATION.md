@@ -6,6 +6,8 @@ Remote native checks, 13 October 2026: GitHub's macOS 15 Intel runner, using Xco
 
 Completed:
 
+- Version 1.3.2 replaces native tooltip timing with active-always status-button tracking and a nonactivating hover panel. Mac AppKit tests cover entering/exiting, refreshing visible content, click-menu suppression, focus restrictions, removal of tracking, and frame placement on displays with positive/negative origins. The public today summary and password-protected owner commands are unchanged. The Mac runner exercises the panel; target-machine behavior on macOS 27 still needs confirmation.
+
 - Version 1.3.1 handles macOS 27's rejection of quarantined launchd property lists. Native installer regression checks use temporary quarantined daemon/agent plists, exercise the actual preparation function, verify unchanged bytes and unrelated attributes, repeat preparation, and reject invalid plists. The test does not register jobs, run the privileged service, or change network settings. Installation now unloads registered jobs by label and skips state recovery when initialization never created a state file. Executable Gatekeeper approval is separate and remains required for the unnotarized build.
 
 - Version 1.3.0 records daily in-school/after-school categories independently of allowance charging, with an explicit bucket for schedule gaps. Automated checks cover boundaries, midnight, DST, offline/paused measurements, reset preservation, schedule-edit stability, total-only history migration, bonus preservation, invalid split rejection, wire round trips, and tooltip splits. Existing total-only history remains unsplit instead of being guessed from today's settings.
