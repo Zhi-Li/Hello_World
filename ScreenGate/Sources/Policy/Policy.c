@@ -17,15 +17,19 @@ static int contains(SGWindow w, int day, int minute) {
            ((w.weekdays & (1u << yesterday)) && minute < w.end_minute);
 }
 
-int sg_mode(const SGWindow *windows, size_t count, int day, int minute) {
-    if (day < 0 || day > 6 || minute < 0 || minute >= 1440) return 0;
+int sg_recording_mode(const SGWindow *windows, size_t count, int day, int minute) {
+    if (day < 0 || day > 6 || minute < 0 || minute >= 1440) return 2;
     int after_school = 0;
     for (size_t i = 0; i < count; i++) {
         if (!contains(windows[i], day, minute)) continue;
         if (windows[i].mode == 0) return 0; /* school always takes priority */
         after_school = 1;
     }
-    return after_school;
+    return after_school ? 1 : 2;
+}
+
+int sg_mode(const SGWindow *windows, size_t count, int day, int minute) {
+    return sg_recording_mode(windows, count, day, minute) == 1;
 }
 
 double sg_accumulate(double used, double elapsed, int after, int active, int paused, int stopped) {

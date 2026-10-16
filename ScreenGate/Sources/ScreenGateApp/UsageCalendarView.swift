@@ -48,6 +48,10 @@ import Shared
         if model.status?.day == selectedKey, let total = model.status?.screenSeconds { return total }
         return selectedRecord?.totalSeconds
     }
+    private var selectedBreakdown: ScreenTimeBreakdown? {
+        if let status = model.status, status.day == selectedKey { return status.breakdown }
+        return selectedRecord?.breakdown
+    }
     private var leadingSpaces: Int {
         (calendar.component(.weekday, from: monthStart) - calendar.firstWeekday + 7) % 7
     }
@@ -74,7 +78,7 @@ import Shared
                     Button("Retry") { model.loadHistory(month: month) }
                 }
             }
-            Text("Counts awake, unlocked screen time, including school hours and offline use. Pausing protection still records totals; Stop & Quit stops recording.")
+            Text("Records awake, unlocked screen time by the schedule active at that moment, including offline use. Pausing protection still records both modes; Stop & Quit stops recording.")
                 .font(.caption).foregroundStyle(.secondary)
         }.padding(18).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
         .onAppear { model.loadHistory(month: month) }
@@ -129,7 +133,26 @@ import Shared
                 Text("Loading recorded time…").font(.callout).foregroundStyle(.secondary)
             } else if let total = selectedTotal {
                 Text(duration(total)).font(.system(size: 30, weight: .semibold, design: .rounded))
-                Text("Recorded screen time").font(.callout).foregroundStyle(.secondary)
+                Text("Total recorded screen time").font(.callout).foregroundStyle(.secondary)
+                if let split = selectedBreakdown {
+                    VStack(spacing: 8) {
+                        timeRow("In-school", seconds: split.inSchoolSeconds)
+                        timeRow("After-school", seconds: split.afterSchoolSeconds)
+                        if split.outsideScheduleSeconds > 0 {
+                            timeRow("Outside scheduled modes", seconds: split.outsideScheduleSeconds)
+                        }
+                        if split.unsplitSeconds(in: total) >= 1 {
+                            timeRow("Earlier unsplit time", seconds: split.unsplitSeconds(in: total))
+                        }
+                    }
+                    if split.unsplitSeconds(in: total) >= 1 {
+                        Text("Earlier recordings have a total only. The split begins with this update.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text("In-school / after-school breakdown unavailable for this earlier recording.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 if let start = model.history?.recordingStartedAt,
                    ScreenDates.dayKey(start, calendar: calendar) == selectedKey {
                     Text("Calendar recording began at \(format(start, pattern: "h:mm a")) on this date.")
@@ -153,6 +176,13 @@ import Shared
                     .font(.caption).foregroundStyle(.secondary)
             }
         }.padding(.top, 5)
+    }
+    private func timeRow(_ title: String, seconds: Double) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).foregroundStyle(.secondary)
+            Spacer(minLength: 12)
+            Text(duration(seconds)).monospacedDigit()
+        }.font(.callout)
     }
     private func moveMonth(_ amount: Int) {
         guard let next = calendar.date(byAdding: .month, value: amount, to: monthStart) else { return }

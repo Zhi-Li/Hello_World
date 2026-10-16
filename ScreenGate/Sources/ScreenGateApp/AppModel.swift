@@ -88,14 +88,16 @@ import Shared
     private func acceptStatus(_ value: GateStatus?) {
         status = value
         if let value {
-            menuBarTooltip = TodayScreenTime(day: value.day, screenSeconds: value.screenSeconds).tooltip()
+            menuBarTooltip = TodayScreenTime(day: value.day, screenSeconds: value.screenSeconds,
+                breakdown: value.breakdown).tooltip()
         }
         guard let value, let total = value.screenSeconds, var month = history,
               value.day.hasPrefix(month.month + "-") else { return }
         if let index = month.days.firstIndex(where: { $0.day == value.day }) {
             month.days[index].totalSeconds = total
+            month.days[index].breakdown = value.breakdown
         } else {
-            month.days.append(ScreenTimeDay(day: value.day, totalSeconds: total))
+            month.days.append(ScreenTimeDay(day: value.day, totalSeconds: total, breakdown: value.breakdown))
             month.days.sort { $0.day < $1.day }
         }
         if let started = value.recordingStartedAt { month.recordingStartedAt = started }

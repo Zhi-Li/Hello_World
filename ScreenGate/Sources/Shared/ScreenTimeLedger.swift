@@ -11,13 +11,40 @@ public enum ScreenDates {
     }
 }
 
+public struct ScreenTimeBreakdown: Codable, Sendable {
+    public var inSchoolSeconds: Double
+    public var afterSchoolSeconds: Double
+    public var outsideScheduleSeconds: Double
+    public init(inSchoolSeconds: Double = 0, afterSchoolSeconds: Double = 0,
+                outsideScheduleSeconds: Double = 0) {
+        self.inSchoolSeconds = inSchoolSeconds; self.afterSchoolSeconds = afterSchoolSeconds
+        self.outsideScheduleSeconds = outsideScheduleSeconds
+    }
+    public var totalSeconds: Double { inSchoolSeconds + afterSchoolSeconds + outsideScheduleSeconds }
+    public var isValid: Bool {
+        [inSchoolSeconds, afterSchoolSeconds, outsideScheduleSeconds, totalSeconds]
+            .allSatisfy { $0.isFinite && $0 >= 0 }
+    }
+    public func unsplitSeconds(in total: Double) -> Double { max(0, total - totalSeconds) }
+    mutating func add(_ seconds: Double, category: ScreenTimeCategory) {
+        switch category {
+        case .inSchool: inSchoolSeconds += seconds
+        case .afterSchool: afterSchoolSeconds += seconds
+        case .outsideSchedule: outsideScheduleSeconds += seconds
+        }
+    }
+}
+
 public struct ScreenTimeDay: Codable, Sendable, Identifiable {
     public var day: String
     public var totalSeconds: Double?
     public var legacyAfterSchoolSeconds: Double?
+    public var breakdown: ScreenTimeBreakdown?
     public var id: String { day }
-    public init(day: String, totalSeconds: Double?, legacyAfterSchoolSeconds: Double? = nil) {
+    public init(day: String, totalSeconds: Double?, legacyAfterSchoolSeconds: Double? = nil,
+                breakdown: ScreenTimeBreakdown? = nil) {
         self.day = day; self.totalSeconds = totalSeconds; self.legacyAfterSchoolSeconds = legacyAfterSchoolSeconds
+        self.breakdown = breakdown
     }
 }
 
@@ -33,13 +60,18 @@ public struct ScreenTimeLedger: Codable, Sendable {
     public private(set) var legacyAfterSchool: [String: Double]
     public private(set) var bonuses: [String: Int] = [:]
     public private(set) var recordingStartedAt: Date?
+    // Optional so histories saved before split recording decode without losing data.
+    public private(set) var breakdowns: [String: ScreenTimeBreakdown]?
 
     public init(legacyUsage: [String: Double] = [:]) { legacyAfterSchool = legacyUsage }
 
     public func validate() throws {
         guard totals.values.allSatisfy({ $0.isFinite && $0 >= 0 }),
               legacyAfterSchool.values.allSatisfy({ $0.isFinite && $0 >= 0 }),
-              bonuses.values.allSatisfy({ (0...1440).contains($0) }) else {
+              bonuses.values.allSatisfy({ (0...1440).contains($0) }),
+              (breakdowns ?? [:]).allSatisfy({ day, split in
+                  split.isValid && totals[day] != nil && split.totalSeconds <= (totals[day] ?? 0) + 0.001
+              }) else {
             throw GateError("Invalid screen-time history.")
         }
     }
@@ -52,6 +84,9 @@ public struct ScreenTimeLedger: Codable, Sendable {
         if recordingStartedAt == nil { recordingStartedAt = start }
         let endDay = ScreenDates.dayKey(end, calendar: calendar)
         if totals[endDay] == nil { totals[endDay] = 0 }
+        var splits = breakdowns ?? [:]
+        if splits[endDay] == nil { splits[endDay] = ScreenTimeBreakdown() }
+        breakdowns = splits
         let wallDelta = end.timeIntervalSince(start)
         guard active, elapsed.isFinite, elapsed > 0, elapsed <= 2.5,
               wallDelta.isFinite, abs(wallDelta - elapsed) < 2 else { return }
@@ -62,11 +97,14 @@ public struct ScreenTimeLedger: Codable, Sendable {
             let day = ScreenDates.dayKey(sample, calendar: calendar)
             let seconds = elapsed / Double(steps)
             totals[day, default: 0] += seconds
+            let category = settings.recordingCategory(at: sample, calendar: calendar)
+            splits[day, default: ScreenTimeBreakdown()].add(seconds, category: category)
             // Internet availability never gates measurement or allowance accumulation.
             allowanceUsage[day] = sg_accumulate(allowanceUsage[day] ?? 0, seconds,
-                settings.mode(at: sample, calendar: calendar) == .afterSchool ? 1 : 0,
+                category == .afterSchool ? 1 : 0,
                 1, paused ? 1 : 0, 0)
         }
+        breakdowns = splits
     }
 
     public func extraMinutes(on date: Date, calendar: Calendar = .autoupdatingCurrent) -> Int {
@@ -95,7 +133,8 @@ public struct ScreenTimeLedger: Codable, Sendable {
         let keys = Set(totals.keys).union(legacyAfterSchool.keys)
             .filter { $0.hasPrefix(month + "-") }.sorted()
         return ScreenTimeMonth(month: month, days: keys.map {
-            ScreenTimeDay(day: $0, totalSeconds: totals[$0], legacyAfterSchoolSeconds: legacyAfterSchool[$0])
+            ScreenTimeDay(day: $0, totalSeconds: totals[$0], legacyAfterSchoolSeconds: legacyAfterSchool[$0],
+                          breakdown: breakdowns?[$0])
         }, recordingStartedAt: recordingStartedAt)
     }
 }

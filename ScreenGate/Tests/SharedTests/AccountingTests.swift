@@ -26,6 +26,8 @@ final class AccountingTests: XCTestCase {
         record(&ledger, usage: &usage, at: date(10, 12, 10), seconds: 12)
         XCTAssertEqual(ledger.totals["2026-10-12"], 12)
         XCTAssertEqual(usage["2026-10-12"] ?? 0, 0)
+        XCTAssertEqual(ledger.breakdowns?["2026-10-12"]?.inSchoolSeconds, 12)
+        XCTAssertEqual(ledger.breakdowns?["2026-10-12"]?.afterSchoolSeconds, 0)
     }
     func testBlockedUsageKeepsCountingAndAllowanceResetPreservesCalendar() throws {
         var ledger = ScreenTimeLedger(), usage = ["2026-10-15": 60.0]
@@ -36,14 +38,17 @@ final class AccountingTests: XCTestCase {
         XCTAssertEqual(ledger.totals["2026-10-15"], 5)
         usage["2026-10-15"] = 0
         XCTAssertEqual(try ledger.history(for: "2026-10").days.first?.totalSeconds, 5)
+        XCTAssertEqual(try ledger.history(for: "2026-10").days.first?.breakdown?.afterSchoolSeconds, 5)
     }
     func testPauseRecordsTotalsAndStopEndsRecording() {
         var ledger = ScreenTimeLedger(), usage: [String: Double] = [:]
         record(&ledger, usage: &usage, at: date(10, 15, 20), seconds: 10, paused: true)
         XCTAssertEqual(ledger.totals["2026-10-15"], 10)
         XCTAssertEqual(usage["2026-10-15"] ?? 0, 0)
+        XCTAssertEqual(ledger.breakdowns?["2026-10-15"]?.afterSchoolSeconds, 10)
         record(&ledger, usage: &usage, at: date(10, 16, 20), seconds: 10, stopped: true)
         XCTAssertNil(ledger.totals["2026-10-16"])
+        XCTAssertNil(ledger.breakdowns?["2026-10-16"])
     }
     func testInactiveScreensSleepGapsAndClockJumpsAreNotCounted() {
         var ledger = ScreenTimeLedger(), usage: [String: Double] = [:]
@@ -55,6 +60,7 @@ final class AccountingTests: XCTestCase {
         }
         XCTAssertEqual(ledger.totals["2026-10-15"], 0)
         XCTAssertTrue(usage.isEmpty)
+        XCTAssertEqual(ledger.breakdowns?["2026-10-15"]?.totalSeconds, 0)
     }
     func testMidnightSplitsBothCountersAndExpiresBonus() throws {
         var ledger = ScreenTimeLedger(), usage: [String: Double] = [:]
@@ -66,6 +72,8 @@ final class AccountingTests: XCTestCase {
         XCTAssertEqual(ledger.totals["2026-10-16"], 1)
         XCTAssertEqual(usage["2026-10-15"], 1)
         XCTAssertEqual(usage["2026-10-16"], 1)
+        XCTAssertEqual(ledger.breakdowns?["2026-10-15"]?.afterSchoolSeconds, 1)
+        XCTAssertEqual(ledger.breakdowns?["2026-10-16"]?.afterSchoolSeconds, 1)
         XCTAssertEqual(ledger.effectiveLimit(baseMinutes: 90, on: start, calendar: calendar), 120)
         XCTAssertEqual(ledger.effectiveLimit(baseMinutes: 90, on: end, calendar: calendar), 90)
     }
@@ -76,6 +84,8 @@ final class AccountingTests: XCTestCase {
             paused: false, stopped: false, settings: GateSettings(), allowanceUsage: &usage, calendar: calendar)
         XCTAssertEqual(ledger.totals["2026-10-12"], 2)
         XCTAssertEqual(usage["2026-10-12"], 1)
+        XCTAssertEqual(ledger.breakdowns?["2026-10-12"]?.inSchoolSeconds, 1)
+        XCTAssertEqual(ledger.breakdowns?["2026-10-12"]?.afterSchoolSeconds, 1)
     }
     func testDaylightSavingClockChangeUsesElapsedTime() {
         var ledger = ScreenTimeLedger(), usage: [String: Double] = [:]
@@ -85,6 +95,7 @@ final class AccountingTests: XCTestCase {
             stopped: false, settings: GateSettings(), allowanceUsage: &usage, calendar: calendar)
         XCTAssertEqual(ledger.totals["2026-10-04"], 2)
         XCTAssertEqual(usage["2026-10-04"], 2)
+        XCTAssertEqual(ledger.breakdowns?["2026-10-04"]?.afterSchoolSeconds, 2)
     }
     func testExtensionUnblocksWithoutResetAndPersistsAcrossRestart() throws {
         var ledger = ScreenTimeLedger()
@@ -129,5 +140,59 @@ final class AccountingTests: XCTestCase {
         let response = GateResponse(ok: true, history: try ledger.history(for: "2026-10"))
         let decodedResponse = try JSONDecoder().decode(GateResponse.self, from: JSONEncoder().encode(response))
         XCTAssertEqual(decodedResponse.history?.days.first?.totalSeconds, 3)
+        XCTAssertEqual(decodedResponse.history?.days.first?.breakdown?.afterSchoolSeconds, 3)
+    }
+    func testOlderTotalOnlyLedgerMigratesWithoutInventingSplitOrLosingBonus() throws {
+        let data = Data("""
+        {"totals":{"2026-10-15":3600},"legacyAfterSchool":{"2026-10-14":120},"bonuses":{"2026-10-15":30}}
+        """.utf8)
+        var ledger = try JSONDecoder().decode(ScreenTimeLedger.self, from: data)
+        try ledger.validate()
+        XCTAssertNil(ledger.breakdowns)
+        XCTAssertNil(try ledger.history(for: "2026-10").days.last?.breakdown)
+        var usage: [String: Double] = [:]
+        record(&ledger, usage: &usage, at: date(10, 15, 20), seconds: 5)
+        let restored = try JSONDecoder().decode(ScreenTimeLedger.self, from: JSONEncoder().encode(ledger))
+        try restored.validate()
+        let day = try XCTUnwrap(restored.history(for: "2026-10").days.last)
+        XCTAssertEqual(day.totalSeconds, 3605)
+        XCTAssertEqual(day.breakdown?.inSchoolSeconds, 0)
+        XCTAssertEqual(day.breakdown?.afterSchoolSeconds, 5)
+        XCTAssertEqual(day.breakdown?.unsplitSeconds(in: 3605), 3600)
+        XCTAssertEqual(restored.extraMinutes(on: date(10, 15, 20), calendar: calendar), 30)
+        XCTAssertEqual(restored.legacyAfterSchool["2026-10-14"], 120)
+    }
+    func testChangingScheduleDoesNotReclassifyRecordedHistory() throws {
+        var ledger = ScreenTimeLedger(), usage: [String: Double] = [:]
+        record(&ledger, usage: &usage, at: date(10, 12, 10), seconds: 4)
+        let afterOnly = GateSettings(windows: [TimeWindow(mode: .afterSchool, weekdays: [1],
+            startMinute: 0, endMinute: 0, allDay: true)])
+        record(&ledger, usage: &usage, at: date(10, 12, 10, 0, 4), seconds: 3, settings: afterOnly)
+        let split = try XCTUnwrap(ledger.history(for: "2026-10").days.first?.breakdown)
+        XCTAssertEqual(split.inSchoolSeconds, 4)
+        XCTAssertEqual(split.afterSchoolSeconds, 3)
+        XCTAssertEqual(split.totalSeconds, 7)
+        XCTAssertEqual(usage["2026-10-12"], 3)
+    }
+    func testScheduleGapsAreRecordedWithoutMislabelingAsSchool() throws {
+        var ledger = ScreenTimeLedger(), usage: [String: Double] = [:]
+        let schoolOnly = GateSettings(windows: [TimeWindow(mode: .school, weekdays: [1],
+            startMinute: 540, endMinute: 930)])
+        record(&ledger, usage: &usage, at: date(10, 12, 10), seconds: 2, settings: schoolOnly)
+        record(&ledger, usage: &usage, at: date(10, 12, 20), seconds: 3, settings: schoolOnly)
+        let split = try XCTUnwrap(ledger.breakdowns?["2026-10-12"])
+        XCTAssertEqual(split.inSchoolSeconds, 2)
+        XCTAssertEqual(split.afterSchoolSeconds, 0)
+        XCTAssertEqual(split.outsideScheduleSeconds, 3)
+        XCTAssertEqual(split.totalSeconds, ledger.totals["2026-10-12"])
+        XCTAssertEqual(usage["2026-10-12"], 0)
+    }
+    func testInvalidSplitHistoryIsRejected() throws {
+        for split in ["{\"inSchoolSeconds\":-1,\"afterSchoolSeconds\":0,\"outsideScheduleSeconds\":0}",
+                      "{\"inSchoolSeconds\":0,\"afterSchoolSeconds\":11,\"outsideScheduleSeconds\":0}"] {
+            let data = Data("{\"totals\":{\"2026-10-15\":10},\"legacyAfterSchool\":{},\"bonuses\":{},\"breakdowns\":{\"2026-10-15\":\(split)}}".utf8)
+            let ledger = try JSONDecoder().decode(ScreenTimeLedger.self, from: data)
+            XCTAssertThrowsError(try ledger.validate())
+        }
     }
 }

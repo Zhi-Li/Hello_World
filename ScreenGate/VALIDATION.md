@@ -6,6 +6,8 @@ Remote native checks, 13 October 2026: GitHub's macOS 15 Intel runner, using Xco
 
 Completed:
 
+- Version 1.3.0 records daily in-school/after-school categories independently of allowance charging, with an explicit bucket for schedule gaps. Automated checks cover boundaries, midnight, DST, offline/paused measurements, reset preservation, schedule-edit stability, total-only history migration, bonus preservation, invalid split rejection, wire round trips, and tooltip splits. Existing total-only history remains unsplit instead of being guessed from today's settings.
+
 - Version 1.2.1 adds a current-console, read-only today summary for the menu-bar tooltip, with tests for duration formatting, midnight rollover, missing/invalid totals, and a wire response without owner status/history/session data. The owner-window polling path still requires authentication; the locked path fetches only the minimal summary.
 
 - Version 1.2.0 adds automated accounting coverage for school/offline totals, resets preserving history, paused/stopped behavior, sleep/clock gaps, midnight and DST splits, extension persistence and bounds, legacy history labeling, month filtering, and wire messages. The hosted Mac build runs these tests along with the existing tests before packaging.

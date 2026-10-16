@@ -12,6 +12,8 @@ typedef struct {
 } SGWindow;
 
 int sg_window_valid(SGWindow window);
+/* Recording category: 0 in-school, 1 after-school, 2 outside scheduled modes. */
+int sg_recording_mode(const SGWindow *windows, size_t count, int weekday, int minute);
 int sg_mode(const SGWindow *windows, size_t count, int weekday, int minute);
 double sg_accumulate(double used, double elapsed, int after_school, int active, int paused, int stopped);
 int sg_should_block(double used, double limit, int after_school, int paused, int stopped);

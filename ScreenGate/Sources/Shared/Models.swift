@@ -6,6 +6,10 @@ public enum GateMode: Int, Codable, CaseIterable, Sendable {
     public var title: String { self == .school ? "In-school" : "After-school" }
 }
 
+public enum ScreenTimeCategory: Int, Sendable {
+    case inSchool = 0, afterSchool = 1, outsideSchedule = 2
+}
+
 public struct TimeWindow: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID
     public var mode: GateMode
@@ -47,12 +51,16 @@ public struct GateSettings: Codable, Equatable, Sendable {
     }
 
     public func mode(at date: Date, calendar: Calendar = .autoupdatingCurrent) -> GateMode {
+        recordingCategory(at: date, calendar: calendar) == .afterSchool ? .afterSchool : .school
+    }
+
+    public func recordingCategory(at date: Date, calendar: Calendar = .autoupdatingCurrent) -> ScreenTimeCategory {
         let c = calendar.dateComponents([.weekday, .hour, .minute], from: date)
         let windows = self.windows.map(\.native)
         let result = windows.withUnsafeBufferPointer {
-            sg_mode($0.baseAddress, $0.count, Int32((c.weekday ?? 1) - 1), Int32((c.hour ?? 0) * 60 + (c.minute ?? 0)))
+            sg_recording_mode($0.baseAddress, $0.count, Int32((c.weekday ?? 1) - 1), Int32((c.hour ?? 0) * 60 + (c.minute ?? 0)))
         }
-        return result == 1 ? .afterSchool : .school
+        return ScreenTimeCategory(rawValue: Int(result)) ?? .outsideSchedule
     }
 }
 
@@ -68,16 +76,19 @@ public struct GateStatus: Codable, Sendable {
     public var day: String
     public var extraMinutes: Int?
     public var screenSeconds: Double?
+    public var breakdown: ScreenTimeBreakdown?
     public var recordingStartedAt: Date?
     public var effectiveLimitMinutes: Int { min(1440, settings.dailyLimitMinutes + (extraMinutes ?? 0)) }
     public init(settings: GateSettings, usedSeconds: Double, mode: GateMode, paused: Bool,
                 stopped: Bool, blocked: Bool, active: Bool, networkError: String?, day: String,
-                extraMinutes: Int? = nil, screenSeconds: Double? = nil, recordingStartedAt: Date? = nil) {
+                extraMinutes: Int? = nil, screenSeconds: Double? = nil, recordingStartedAt: Date? = nil,
+                breakdown: ScreenTimeBreakdown? = nil) {
         self.settings = settings; self.usedSeconds = usedSeconds; self.mode = mode
         self.paused = paused; self.stopped = stopped; self.blocked = blocked; self.active = active
         self.networkError = networkError; self.day = day
         self.extraMinutes = extraMinutes; self.screenSeconds = screenSeconds
         self.recordingStartedAt = recordingStartedAt
+        self.breakdown = breakdown
     }
 }
 

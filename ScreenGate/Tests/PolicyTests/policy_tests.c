@@ -13,6 +13,7 @@ int main(void) {
         for (int minute = 0; minute < 1440; minute++) {
             int expected = !(day >= 1 && day <= 5 && minute >= 540 && minute < 930);
             assert(sg_mode(defaults, 2, day, minute) == expected);
+            assert(sg_recording_mode(defaults, 2, day, minute) == expected);
         }
     }
     SGWindow overnight = {1320, 120, 1u << 5, 1, 0}; /* Fri 22:00–Sat 02:00 */
@@ -32,6 +33,13 @@ int main(void) {
     invalid.all_day = 1; assert(sg_window_valid(invalid));
     invalid.weekdays = 0; assert(!sg_window_valid(invalid));
     assert(sg_mode(NULL, 0, 2, 600) == 0);
+    assert(sg_recording_mode(NULL, 0, 2, 600) == 2);
+    assert(sg_recording_mode(&overnight, 1, 0, 119) == 1);
+    assert(sg_recording_mode(&overnight, 1, 0, 120) == 2);
+    SGWindow school_only = {540, 930, 0x3e, 0, 0};
+    assert(sg_recording_mode(&school_only, 1, 1, 540) == 0);
+    assert(sg_recording_mode(&school_only, 1, 1, 930) == 2);
+    assert(sg_recording_mode(NULL, 0, -1, 600) == 2);
     assert(sg_accumulate(5, 1, 1, 1, 0, 0) == 6);
     assert(sg_accumulate(5, 1, 0, 1, 0, 0) == 5);
     assert(sg_accumulate(5, 1, 1, 0, 0, 0) == 5);

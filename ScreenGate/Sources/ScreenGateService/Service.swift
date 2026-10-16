@@ -60,7 +60,8 @@ final class Service {
             mode: state.settings.mode(at: now), paused: state.paused, stopped: state.stopped,
             blocked: blocked, active: active, networkError: networkError, day: dayKey(now),
             extraMinutes: state.ledger.extraMinutes(on: now), screenSeconds: state.ledger.totals[dayKey(now)],
-            recordingStartedAt: state.ledger.recordingStartedAt)
+            recordingStartedAt: state.ledger.recordingStartedAt,
+            breakdown: state.ledger.breakdowns?[dayKey(now)])
     }
 
     private func authenticate(_ password: String, uid: UInt32) throws {
@@ -86,7 +87,8 @@ final class Service {
                 }
                 // Read the timer's latest snapshot; this endpoint cannot change protection.
                 let day = dayKey(Date())
-                return GateResponse(ok: true, today: TodayScreenTime(day: day, screenSeconds: state.ledger.totals[day]))
+                return GateResponse(ok: true, today: TodayScreenTime(day: day, screenSeconds: state.ledger.totals[day],
+                    breakdown: state.ledger.breakdowns?[day]))
             }
             sessions = sessions.filter { $0.value.expires > Date() }
             if request.command == "login" {
