@@ -6,7 +6,9 @@ echo "This removes ScreenGate, its owner password, schedule, and usage records."
 read -r -p "Type REMOVE to continue: " confirmation
 [[ "$confirmation" == "REMOVE" ]] || exit 0
 sudo -v
-sudo launchctl bootout system /Library/LaunchDaemons/com.screengate.service.plist 2>/dev/null || true
+if sudo launchctl print system/com.screengate.service >/dev/null 2>&1; then
+    sudo launchctl bootout system/com.screengate.service
+fi
 if ! sudo "/Library/Application Support/ScreenGate/ScreenGateService" --recover; then
     echo "Automatic restoration failed. Connections may still be disabled."
     echo "Restore wanted connections in System Preferences/Settings > Network before removing the recovery records."
@@ -14,7 +16,7 @@ if ! sudo "/Library/Application Support/ScreenGate/ScreenGateService" --recover;
     [[ "$restoration" == "RESTORED" ]] || exit 1
 fi
 current_uid=$(id -u)
-sudo launchctl bootout "gui/$current_uid" /Library/LaunchAgents/com.screengate.ui.plist 2>/dev/null || true
+sudo launchctl bootout "gui/$current_uid/com.screengate.ui" 2>/dev/null || true
 killall ScreenGate 2>/dev/null || true
 sudo rm -f /Library/LaunchAgents/com.screengate.ui.plist /Library/LaunchDaemons/com.screengate.service.plist
 sudo rm -rf /Applications/ScreenGate.app "/Library/Application Support/ScreenGate"

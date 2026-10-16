@@ -24,6 +24,8 @@ if [[ -z "${swift_major:-}" || -z "${swift_minor:-}" ]] || \
     exit 1
 fi
 export MACOSX_DEPLOYMENT_TARGET=12.0
+echo "Checking launchd configuration installation…"
+bash Tests/InstallerTests/launchd_plist_tests.sh
 # SwiftPM 5.7 calls this --build-path; the newer name arrived in Swift 5.8.
 build_path_option=--scratch-path
 if (( swift_major == 5 && swift_minor < 8 )); then

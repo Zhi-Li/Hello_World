@@ -11,9 +11,13 @@ For Apple silicon and Intel Macs running macOS 12 or later, including Monterey 1
 
 The app is installed at `/Applications/ScreenGate.app`. The installer uses the compiled binaries; it does not download or run a compiler. The compiled download uses local ad-hoc code signatures and is **not Apple Developer ID signed or notarized**. macOS may require you to allow opening it using Finder's Open action or the Security & Privacy settings. Do not disable Gatekeeper globally.
 
+**Installer update 1.3.1:** macOS 27 rejects launchd configuration files carrying a download quarantine flag. The installer and recovery script now validate ScreenGate's installed launchd property lists and remove that flag from those configuration files before registering them. This does not approve or notarize executables. It also supports retrying a first installation that was interrupted before creating the owner password. An existing owner password, settings, and history are preserved.
+
+If a previous attempt displayed **Owner password created** followed by **Bootstrap failed: 5**, run this updated installer after handling any executable approval prompt. It reuses that owner password. If registration still fails, it prints a command to obtain ScreenGate-specific launchd logs; the generic error alone does not establish the cause.
+
 The binaries target macOS 12.0. A successful build on the remote Mac does not establish live compatibility with Monterey 12.7.6; follow `MAC_TEST_CHECKLIST.md` before relying on enforcement.
 
-## New in version 1.2.0
+## Screen-time features
 
 **Version 1.3.0:** click any recorded calendar date to see **In-school**, **After-school**, and the combined total. Hover over the menu-bar shield to see today's total and split, refreshed about every two seconds, even while owner controls are locked or closed. Both categories include offline and paused usage. Time follows the schedule in effect when recorded; editing schedules later does not change history. If your schedule has gaps, their time appears separately as **Outside scheduled modes**. Settings and history still require the owner password; only the current console account can read the today-only tooltip summary.
 

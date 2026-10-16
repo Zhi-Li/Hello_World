@@ -4,8 +4,8 @@
 <key>CFBundleName</key><string>ScreenGate</string>
 <key>CFBundleDisplayName</key><string>ScreenGate</string>
 <key>CFBundleIdentifier</key><string>com.screengate.app</string>
-<key>CFBundleVersion</key><string>5</string>
-<key>CFBundleShortVersionString</key><string>1.3.0</string>
+<key>CFBundleVersion</key><string>6</string>
+<key>CFBundleShortVersionString</key><string>1.3.1</string>
 <key>CFBundleExecutable</key><string>ScreenGate</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleIconFile</key><string>ScreenGate</string>

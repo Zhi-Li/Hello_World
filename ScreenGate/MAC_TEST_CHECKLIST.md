@@ -1,5 +1,7 @@
 # First-run checks on the target Mac
 
+**Installer 1.3.1:** on macOS 27, install from a browser-downloaded ZIP. Approve the executable when requested. Confirm both installed ScreenGate plists have no com.apple.quarantine attribute and the daemon registers. Retry after interrupting before initialization, and after the password is created but registration fails: the existing password and history must survive. Try Recover.command and a reboot. A subsequent bootstrap failure must print the launchd-log command. macOS 27 launchd policy is not exercised by the macOS 15 build runner.
+
 These live checks have not been run on a person's Mac. Run them before relying on ScreenGate for unattended enforcement. Native compilation and unit tests are separate from these checks.
 
 1. **Install.** For the compiled ZIP, extract the whole download and run Install.command; Xcode and Command Line Tools are not required. The remote build runs the native unit tests and verifies both architectures and signatures before producing this ZIP. If using the source project instead, build tools with Swift 5.7+ are required (Xcode 14.2 or compatible Command Line Tools on Monterey). Confirm the menu bar shield appears, the owner window can close and reopen, and Cmd-Q asks for the owner password. For compatibility testing, run the same universal app on an Intel Mac with **macOS 12.7.6**, an Apple silicon Mac with macOS 12+, and a newer macOS version.

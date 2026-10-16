@@ -27,6 +27,8 @@ Version **1.1.0** replaces the newer SwiftUI menu-bar/window APIs with AppKit `N
 
 ## What it does
 
+Version **1.3.1** fixes installation/recovery on macOS 27 when downloaded launchd property lists retain quarantine metadata. The scripts validate each installed plist and remove only its com.apple.quarantine attribute before registration. Executable approval remains separate; this build is still not notarized. Interrupted first installs can be retried without attempting to recover a state file that was never created. Existing state is never reinitialized. A failed bootstrap prints a command to inspect the specific launchd error.
+
 Version **1.3.0** splits each day's calendar status into **In-school** and **After-school**, alongside the combined total. The menu-bar tooltip shows today's split too. Classification uses the schedule in effect when time is recorded; later schedule edits do not rewrite history. School windows take priority when windows overlap. If your schedule leaves a gap, its usage is listed as **Outside scheduled modes** rather than assigned to school. Offline and paused usage continue to count in their scheduled categories, independently of the allowance counter. Resetting the allowance or adding extra time never resets these recordings.
 
 Existing daily totals and extra allowances survive the upgrade. Older versions did not record a mode breakdown, so old totals cannot be split retroactively. A date containing both old and new recordings shows **Earlier unsplit time** alongside the new split. Dates with only older totals show that the breakdown is unavailable; older allowance-only records retain their separate label. Install the update and resume protection to begin split recording.
