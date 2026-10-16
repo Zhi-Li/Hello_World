@@ -9,13 +9,13 @@ public struct TodayScreenTime: Codable, Sendable {
         self.day = day; self.screenSeconds = screenSeconds
         self.breakdown = breakdown
     }
-    public static let unavailableTooltip = "ScreenGate\nToday's screen time: Unavailable"
-    public func tooltip(at now: Date = Date(), calendar: Calendar = .autoupdatingCurrent) -> String {
+    public static let unavailableSummary = "ScreenGate\nToday's screen time: Unavailable"
+    public func summary(at now: Date = Date(), calendar: Calendar = .autoupdatingCurrent) -> String {
         guard day == ScreenDates.dayKey(now, calendar: calendar) else {
             return "ScreenGate\nToday's screen time: Updating…"
         }
         guard let seconds = screenSeconds else { return "ScreenGate\nToday's screen time: Not recorded yet" }
-        guard seconds.isFinite, seconds >= 0, seconds < Double(Int.max) else { return Self.unavailableTooltip }
+        guard seconds.isFinite, seconds >= 0, seconds < Double(Int.max) else { return Self.unavailableSummary }
         var lines = ["ScreenGate", "Today's screen time: \(duration(seconds))"]
         if let split = breakdown, split.isValid, split.totalSeconds <= seconds + 0.001 {
             lines += ["In-school: \(duration(split.inSchoolSeconds))",

@@ -15,7 +15,7 @@ import Shared
     @Published var history: ScreenTimeMonth?
     @Published var historyLoading = false
     @Published var historyError: String?
-    @Published var menuBarTooltip = "ScreenGate\nToday's screen time: Loading…"
+    @Published var menuBarSummary = "ScreenGate\nToday's screen time: Loading…"
     var quitAuthorized = false
     private var lastInteraction = Date()
     private var polling = false
@@ -91,8 +91,8 @@ import Shared
     private func acceptStatus(_ value: GateStatus?) {
         status = value
         if let value {
-            menuBarTooltip = TodayScreenTime(day: value.day, screenSeconds: value.screenSeconds,
-                breakdown: value.breakdown).tooltip()
+            menuBarSummary = TodayScreenTime(day: value.day, screenSeconds: value.screenSeconds,
+                breakdown: value.breakdown).summary()
         }
         guard let value, let total = value.screenSeconds, var month = history,
               value.day.hasPrefix(month.month + "-") else { return }
@@ -168,16 +168,16 @@ import Shared
                 switch result {
                 case .success(let response):
                     if response.ok, ownerToken != nil { self.acceptStatus(response.status) }
-                    else if response.ok, let today = response.today { self.menuBarTooltip = today.tooltip() }
+                    else if response.ok, let today = response.today { self.menuBarSummary = today.summary() }
                     else {
-                        self.menuBarTooltip = TodayScreenTime.unavailableTooltip
+                        self.menuBarSummary = TodayScreenTime.unavailableSummary
                         if ownerToken != nil {
                             if response.unauthorized == true { self.lock() }
                             else { self.error = response.error }
                         }
                     }
                 case .failure(let error):
-                    self.menuBarTooltip = TodayScreenTime.unavailableTooltip
+                    self.menuBarSummary = TodayScreenTime.unavailableSummary
                     if ownerToken != nil { self.error = error.localizedDescription }
                 }
             }
