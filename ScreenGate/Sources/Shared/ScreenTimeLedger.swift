@@ -76,20 +76,21 @@ public struct ScreenTimeLedger: Codable, Sendable {
         }
     }
 
-    public mutating func record(from start: Date, to end: Date, elapsed: Double,
+    @discardableResult public mutating func record(from start: Date, to end: Date, elapsed: Double,
                                 active: Bool, paused: Bool, stopped: Bool,
                                 settings: GateSettings, allowanceUsage: inout [String: Double],
-                                calendar: Calendar = .autoupdatingCurrent) {
-        guard !stopped else { return }
-        if recordingStartedAt == nil { recordingStartedAt = start }
+                                calendar: Calendar = .autoupdatingCurrent) -> Bool {
+        guard !stopped else { return false }
+        var changed = false
+        if recordingStartedAt == nil { recordingStartedAt = start; changed = true }
         let endDay = ScreenDates.dayKey(end, calendar: calendar)
-        if totals[endDay] == nil { totals[endDay] = 0 }
+        if totals[endDay] == nil { totals[endDay] = 0; changed = true }
         var splits = breakdowns ?? [:]
-        if splits[endDay] == nil { splits[endDay] = ScreenTimeBreakdown() }
+        if splits[endDay] == nil { splits[endDay] = ScreenTimeBreakdown(); changed = true }
         breakdowns = splits
         let wallDelta = end.timeIntervalSince(start)
         guard active, elapsed.isFinite, elapsed > 0, elapsed <= 2.5,
-              wallDelta.isFinite, abs(wallDelta - elapsed) < 2 else { return }
+              wallDelta.isFinite, abs(wallDelta - elapsed) < 2 else { return changed }
         // Split samples at midnight and schedule boundaries, including DST transitions.
         let steps = max(1, Int(ceil(elapsed / 0.25)))
         for i in 0..<steps {
@@ -105,6 +106,7 @@ public struct ScreenTimeLedger: Codable, Sendable {
                 1, paused ? 1 : 0, 0)
         }
         breakdowns = splits
+        return true
     }
 
     public func extraMinutes(on date: Date, calendar: Calendar = .autoupdatingCurrent) -> Int {

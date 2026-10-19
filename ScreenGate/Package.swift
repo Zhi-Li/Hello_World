@@ -12,9 +12,11 @@ let package = Package(
             .linkedFramework("SystemConfiguration"), .linkedFramework("Security")]),
         .target(name: "Shared", dependencies: ["Policy", "MacBridge"]),
         .target(name: "MenuBarUI"),
-        .executableTarget(name: "ScreenGateService", dependencies: ["Shared", "MacBridge", "Policy"]),
+        .target(name: "ServiceSupport"),
+        .executableTarget(name: "ScreenGateService", dependencies: ["Shared", "MacBridge", "Policy", "ServiceSupport"]),
         .executableTarget(name: "ScreenGateApp", dependencies: ["Shared", "MenuBarUI"]),
         .testTarget(name: "SharedTests", dependencies: ["Shared", "Policy"]),
-        .testTarget(name: "MenuBarUITests", dependencies: ["MenuBarUI"])
+        .testTarget(name: "MenuBarUITests", dependencies: ["MenuBarUI"]),
+        .testTarget(name: "ServiceSupportTests", dependencies: ["ServiceSupport", "Shared"])
     ]
 )

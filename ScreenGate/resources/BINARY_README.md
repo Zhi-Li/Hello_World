@@ -19,6 +19,10 @@ The binaries target macOS 12.0. A successful build on the remote Mac does not es
 
 ## Screen-time features
 
+**Performance update 1.3.3:** live screen-time counters still update every second. Ordinary changed usage is checkpointed to disk every 30 seconds; clean idle/stopped state does not trigger periodic saves. Owner changes, the network recovery journal, day rollover, and orderly service shutdown are saved immediately. A sudden power loss or crash can lose up to about 30 seconds of ordinary usage since the last successful checkpoint; owner changes and network recovery records are saved separately and immediately. Failed routine writes retain dirty data and retry after five seconds.
+
+While blocked, the service still inspects network settings every five seconds to catch newly enabled connections. It commits/applies only real changes or a pending failed apply, rather than reapplying unchanged restrictions. Pause/exit still restores only the connections ScreenGate journaled; a service restart replays a pending recovery journal once. In unrestricted mode with no recovery work, it skips opening network preferences altogether.
+
 **Click-menu update 1.3.2:** click the menu-bar shield to see today's total and in-school/after-school split directly above the owner controls. It works while controls are locked or closed, refreshes when opened, and updates about every two seconds while the menu remains open. Loading, unavailable, and unrecorded states are labeled. The menu also shows the app version. Screen time is shown on click; hovering no longer displays usage. The macOS 27 installer fix from 1.3.1 is included.
 
 **Version 1.3.0:** click any recorded calendar date to see **In-school**, **After-school**, and the combined total. Both categories include offline and paused usage. Time follows the schedule in effect when recorded; editing schedules later does not change history. If your schedule has gaps, their time appears separately as **Outside scheduled modes**. Settings and history still require the owner password; only the current console account can read the today-only menu summary.

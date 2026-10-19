@@ -3,6 +3,7 @@ import Darwin
 import Shared
 import Policy
 import MacBridge
+import ServiceSupport
 
 final class Service {
     var state: StoredState
@@ -13,7 +14,10 @@ final class Service {
     private var active = false
     private var blocked = false
     private var networkError: String?
-    private var lastNetworkCheck = Date.distantPast
+    private var persistenceError: String?
+    private let checkpoint = UsageCheckpoint(at: ProcessInfo.processInfo.systemUptime)
+    private var lastNetworkCheck = -Double.infinity
+    private var lastPrunedDay: String?
     private var lastDesired: Bool?
     private var sessions: [String: (uid: UInt32, expires: Date)] = [:]
     private var failures: [UInt32: (count: Int, until: Date)] = [:]
@@ -24,27 +28,49 @@ final class Service {
     func tick(forceNetwork: Bool = false) {
         let now = Date(), uptime = ProcessInfo.processInfo.systemUptime
         let elapsed = uptime - lastUptime
+        let previousDay = dayKey(lastDate), today = dayKey(now)
         active = sg_screen_active() == 1
         var ledger = state.ledger
         var usage = state.usage
-        ledger.record(from: lastDate, to: now, elapsed: elapsed, active: active && lastActive,
+        let changed = ledger.record(from: lastDate, to: now, elapsed: elapsed, active: active && lastActive,
             paused: state.paused, stopped: state.stopped, settings: state.settings, allowanceUsage: &usage)
         state.ledger = ledger; state.usage = usage
+        if changed { checkpoint.markDirty() }
         lastDate = now; lastUptime = uptime; lastActive = active
         // Retain dates so moving the clock backwards cannot erase that day's allowance.
-        let cutoff = dayKey(Calendar.current.date(byAdding: .day, value: -45, to: now) ?? now)
-        state.usage = state.usage.filter { $0.key >= cutoff }
-        do {
-            try state.save()
-            let desired = shouldBlock(now)
-            if forceNetwork || desired != lastDesired || now.timeIntervalSince(lastNetworkCheck) >= 5 {
-                blocked = try network.reconcile(block: desired, state: &state)
-                lastNetworkCheck = now; lastDesired = desired; networkError = nil
-            }
-        } catch {
-            networkError = error.localizedDescription
-            lastDesired = nil // ensure failures retry
+        if lastPrunedDay != today {
+            let cutoff = dayKey(Calendar.current.date(byAdding: .day, value: -45, to: now) ?? now)
+            let oldCount = state.usage.count
+            state.usage = state.usage.filter { $0.key >= cutoff }
+            if state.usage.count != oldCount { checkpoint.markDirty() }
+            lastPrunedDay = today
         }
+        let desired = shouldBlock(now)
+        if forceNetwork || desired != lastDesired || uptime - lastNetworkCheck >= 5 {
+            // Errors retry at the inspection cadence, without a per-second loop.
+            lastNetworkCheck = uptime; lastDesired = desired
+            let checkpoint = self.checkpoint
+            do {
+                blocked = try network.reconcile(block: desired, state: &state,
+                    didPersist: { checkpoint.didSave(at: uptime) })
+                networkError = nil
+            } catch { networkError = error.localizedDescription }
+        }
+        do {
+            try checkpoint.flush(at: uptime, force: previousDay != today) { try state.save() }
+            if !checkpoint.isDirty { persistenceError = nil }
+        } catch { persistenceError = error.localizedDescription }
+    }
+
+    private func persistImmediately() throws {
+        checkpoint.markDirty()
+        try checkpoint.flush(at: ProcessInfo.processInfo.systemUptime, force: true) { try state.save() }
+        persistenceError = nil
+    }
+
+    private var statusError: String? {
+        let errors = [persistenceError, networkError].compactMap { $0 }
+        return errors.isEmpty ? nil : errors.joined(separator: "\n")
     }
 
     private func shouldBlock(_ now: Date) -> Bool {
@@ -58,7 +84,7 @@ final class Service {
         let now = Date()
         return GateStatus(settings: state.settings, usedSeconds: state.usage[dayKey(now)] ?? 0,
             mode: state.settings.mode(at: now), paused: state.paused, stopped: state.stopped,
-            blocked: blocked, active: active, networkError: networkError, day: dayKey(now),
+            blocked: blocked, active: active, networkError: statusError, day: dayKey(now),
             extraMinutes: state.ledger.extraMinutes(on: now), screenSeconds: state.ledger.totals[dayKey(now)],
             recordingStartedAt: state.ledger.recordingStartedAt,
             breakdown: state.ledger.breakdowns?[dayKey(now)])
@@ -116,28 +142,28 @@ final class Service {
                 guard let minutes = request.extraMinutes else { throw GateError("Choose how many minutes to add.") }
                 tick()
                 try state.ledger.extend(minutes: minutes, baseMinutes: state.settings.dailyLimitMinutes, on: now)
-                try state.save(); tick(forceNetwork: true)
+                try persistImmediately(); tick(forceNetwork: true)
             case "save":
                 guard let settings = request.settings else { throw GateError("Settings are missing.") }
                 try settings.validate()
-                tick(); state.settings = settings; try state.save(); tick(forceNetwork: true)
+                tick(); state.settings = settings; try persistImmediately(); tick(forceNetwork: true)
             case "pause":
-                tick(); state.paused = true; try state.save(); tick(forceNetwork: true)
+                tick(); state.paused = true; try persistImmediately(); tick(forceNetwork: true)
                 guard networkError == nil else { throw GateError(networkError!) }
             case "resume":
-                tick(); state.paused = false; state.stopped = false; try state.save(); tick(forceNetwork: true)
+                tick(); state.paused = false; state.stopped = false; try persistImmediately(); tick(forceNetwork: true)
             case "reset":
-                tick(); state.usage[dayKey(Date())] = 0; try state.save(); tick(forceNetwork: true)
+                tick(); state.usage[dayKey(Date())] = 0; try persistImmediately(); tick(forceNetwork: true)
             case "stop":
                 // Require a fresh password even if an owner left the window unlocked.
                 try authenticate(request.password ?? "", uid: uid)
-                tick(); state.stopped = true; try state.save(); tick(forceNetwork: true)
+                tick(); state.stopped = true; try persistImmediately(); tick(forceNetwork: true)
                 guard networkError == nil else { throw GateError(networkError!) }
                 exitRequested = true
             case "password":
                 try authenticate(request.password ?? "", uid: uid)
                 state.password = try PasswordRecord.create(request.newPassword ?? "")
-                try state.save(); sessions = sessions.filter { $0.key == token }
+                try persistImmediately(); sessions = sessions.filter { $0.key == token }
             case "logout": sessions.removeValue(forKey: token)
             default: throw GateError("Unknown command.")
             }
@@ -146,7 +172,11 @@ final class Service {
     }
 
     func restoreForShutdown() {
-        do { _ = try network.reconcile(block: false, state: &state); try state.save() }
+        let checkpoint = self.checkpoint
+        do { _ = try network.reconcile(block: false, state: &state,
+            didPersist: { checkpoint.didSave(at: ProcessInfo.processInfo.systemUptime) }) }
         catch { fputs("ScreenGate restoration error: \(error.localizedDescription)\n", stderr) }
+        do { try persistImmediately() }
+        catch { fputs("ScreenGate save error: \(error.localizedDescription)\n", stderr) }
     }
 }
